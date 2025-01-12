@@ -1,7 +1,6 @@
 from fastapi import FastAPI
+from app.api.v1.endpoints import video_endpoint_router
 
 app = FastAPI()
 
-@app.get("/")
-async def home():
-    return {"message": "Hello, World!"}
+app.include_router(router=video_endpoint_router)

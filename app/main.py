@@ -3,7 +3,7 @@ from fastapi.security import APIKeyHeader
 from app.api.v1.endpoints import video, link_sharing
 from app.core.config import settings
 from app.db.session import engine, Base
-import os 
+import os
 
 os.makedirs("store", exist_ok=True)
 

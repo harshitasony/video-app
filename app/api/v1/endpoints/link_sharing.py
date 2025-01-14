@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
 
+
 class LinkSharingEndpoint:
     def __init__(self):
         self.router = APIRouter(prefix="/api/v1")
@@ -24,11 +25,21 @@ class LinkSharingEndpoint:
         """
         Registers API routes.
         """
-        self.router.post("/generate_link", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)])(self.generate_link)
-        self.router.get("/access_video/{link_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)])(self.access_video)
+        self.router.post(
+            "/generate_link",
+            status_code=status.HTTP_200_OK,
+            dependencies=[Depends( app/core/auth.py cate)],
+        )(self.generate_link)
+        self.router.get(
+            "/access_video/{link_id}",
+            status_code=status.HTTP_200_OK,
+            dependencies=[Depends(authenticate)],
+        )(self.access_video)
         return self.router
 
-    async def generate_link(self, video_id: str, request: Request, db: Session = Depends(get_db)):
+    async def generate_link(
+        self, video_id: str, request: Request, db: Session = Depends(get_db)
+    ):
         """
         API endpoint to generate a shareable link.
         """
@@ -39,18 +50,16 @@ class LinkSharingEndpoint:
             raise HTTPException(status_code=404, detail=err_str)
 
         link_id = str(uuid.uuid4())
-        expiry_time = datetime.now(timezone.utc) + timedelta(minutes=settings.LINK_EXPIRY_MINUTES)
-        link = Link(
-            id=link_id,
-            video_id=video_id,
-            expiry_time=expiry_time
+        expiry_time = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.LINK_EXPIRY_MINUTES
         )
+        link = Link(id=link_id, video_id=video_id, expiry_time=expiry_time)
         db.add(link)
         db.commit()
         db.refresh(link)
         sharable_link = f"{request.base_url}api/v1/access_video/{link_id}"
         return {"link": sharable_link, "expiry_time": expiry_time}
-    
+
     async def access_video(self, link_id: str, db: Session = Depends(get_db)):
         """
         API endpoint to access video.
@@ -74,5 +83,7 @@ class LinkSharingEndpoint:
             logger.error(err_str)
             raise HTTPException(status_code=404, detail=err_str)
 
-        #return {"video_path": video.file_path}
-        return FileResponse(video.file_path, media_type='video/mp4', filename=video.title)
+        # return {"video_path": video.file_path}
+        return FileResponse(
+            video.file_path, media_type="video/mp4", filename=video.title
+        )

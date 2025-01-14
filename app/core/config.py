@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     API_KEY: str
     API_KEY_NAME: str
@@ -10,6 +11,7 @@ class Settings(BaseSettings):
     LINK_EXPIRY_MINUTES: int
 
     class Config:
-        env_file = ".env" 
+        env_file = ".env"
+
 
 settings = Settings()

@@ -4,7 +4,7 @@ import datetime
 
 
 class Video(Base):
-    __tablename__ = 'video_details'
+    __tablename__ = "video_details"
 
     id = Column(String, primary_key=True, index=True)
     title = Column(String, index=True)
@@ -13,4 +13,3 @@ class Video(Base):
     file_path = Column(String, unique=True, index=True, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.datetime.now(datetime.timezone.utc))
     trimmed = Column(Boolean, default=False)
-    

@@ -4,6 +4,7 @@ from app.core.config import settings
 
 api_key_header = APIKeyHeader(name=settings.API_KEY_NAME, auto_error=True)
 
+
 def authenticate(api_key: str = Depends(api_key_header)):
     if api_key != settings.API_KEY:
         raise HTTPException(

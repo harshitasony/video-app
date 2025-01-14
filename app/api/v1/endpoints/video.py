@@ -11,11 +11,18 @@ from app.db.session import get_db
 from sqlalchemy.orm import Session
 import uuid
 from app.core.auth import authenticate
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
+
+class TrimVideoRequest(BaseModel):
+    video_id: str
+    start_time: int
+    end_time: int
+    save_as_new: bool
 
 class VideoEndpoint:
     def __init__(self):
@@ -59,6 +66,7 @@ class VideoEndpoint:
         temp_file_path = f"temp_{uploaded_file.filename}"
         with open(temp_file_path, "wb") as temp_file:
             temp_file.write(input_file)
+        video_file = None
 
         try:
             video_file = VideoFileClip(temp_file_path)
@@ -97,13 +105,19 @@ class VideoEndpoint:
             raise HTTPException(status_code=400, detail=err_str)
 
         finally:
-            video_file.close()
+            if video_file:
+                video_file.close()
             os.remove(temp_file_path)
 
-    async def trim_video(self, video_id: str, start_time: int, end_time: int, save_as_new: bool, db: Session = Depends(get_db)):
+    async def trim_video(self, trim_data: TrimVideoRequest, db: Session = Depends(get_db)):
         """
         API endpoint for trimming a video.
         """
+        video_id = trim_data.video_id
+        start_time = trim_data.start_time
+        end_time = trim_data.end_time
+        save_as_new = trim_data.save_as_new
+
         video = db.query(Video).filter(Video.id == video_id).first()
         if not video:
             err_str = f"Video with id {video_id} not found"

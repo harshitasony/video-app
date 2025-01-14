@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     API_KEY: str
+    API_KEY_NAME: str
     DATABASE_URL: str
     MAX_VIDEO_SIZE_MB: int
     MIN_VIDEO_DURATION_SEC: int
@@ -12,4 +13,3 @@ class Settings(BaseSettings):
         env_file = ".env" 
 
 settings = Settings()
-print(f"API_KEY: {settings.API_KEY}")

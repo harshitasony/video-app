@@ -10,6 +10,7 @@ import logging
 from app.db.session import get_db
 from sqlalchemy.orm import Session
 import uuid
+from app.core.auth import authenticate
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -26,13 +27,13 @@ class VideoEndpoint:
         """
         self.router.get("/test", status_code=status.HTTP_200_OK)(self.test)
         self.router.post(
-            "/video/upload", status_code=status.HTTP_200_OK
+            "/video/upload", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)]
         )(self.upload_video)
         self.router.post(
-            "/video/trim", status_code=status.HTTP_200_OK
+            "/video/trim", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)]
         )(self.trim_video)
         self.router.post(
-            "/videos/merge", status_code=status.HTTP_200_OK
+            "/videos/merge", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)]
         )(self.merge_videos)
         return self.router
 

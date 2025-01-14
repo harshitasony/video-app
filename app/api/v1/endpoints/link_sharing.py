@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import logging
 from fastapi.responses import FileResponse
+from app.core.auth import authenticate
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +24,8 @@ class LinkSharingEndpoint:
         """
         Registers API routes.
         """
-        self.router.post("/generate_link", status_code=status.HTTP_200_OK)(self.generate_link)
-        self.router.get("/access_video/{link_id}", status_code=status.HTTP_200_OK)(self.access_video)
+        self.router.post("/generate_link", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)])(self.generate_link)
+        self.router.get("/access_video/{link_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(authenticate)])(self.access_video)
         return self.router
 
     async def generate_link(self, video_id: str, request: Request, db: Session = Depends(get_db)):

@@ -4,7 +4,7 @@ from fastapi import APIRouter, UploadFile, HTTPException, status, Depends
 from app.core.config import settings
 import ffmpeg
 import moviepy
-from moviepy.editor import VideoFileClip
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 import os
 import logging
 from app.db.session import get_db
@@ -76,18 +76,21 @@ class VideoEndpoint:
             file_location = f"store/{unique_id}{file_extension}"
             with open(file_location, "wb") as buffer:
                 buffer.write(input_file)
-            
-            video = Video(id=unique_id, title=uploaded_file.filename, duration=video_duration, size_mb=file_size, file_path=file_location)
-            db.add(video)
+            video_ob = Video(
+                id=unique_id, 
+                title=uploaded_file.filename, 
+                duration=video_duration, 
+                size_mb=file_size, 
+                file_path=file_location
+            )
+            db.add(video_ob)
             db.commit()
-            db.refresh(video)
+            db.refresh(video_ob)
             
             logger.info("Video uploaded successfully")
             return {"message": "Video uploaded successfully", "video_id": video.id}
 
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())
             err_str = f"Error during video upload: {e}"
             logger.error(err_str)
             raise HTTPException(status_code=400, detail=err_str)
@@ -114,32 +117,34 @@ class VideoEndpoint:
                 raise HTTPException(status_code=400, detail=err_str)
 
             trimmed_video = video_file.subclip(start_time, end_time)
-            trimmed_video_duration = int(trimmed_video.duration)
+            unique_id = video.id
 
             if save_as_new:
                 unique_id = str(uuid.uuid4())
                 file_extension = os.path.splitext(video.title)[1]
                 file_location = f"store/{unique_id}{file_extension}"
-                with open(file_location, "wb") as buffer:
-                    buffer.write(trimmed_video)
-
-                trimmed_video_size = os.path.getsize(file_location) / (1024 * 1024),
-                trimmed_video = Video(id=unique_id, title=video.file_name, duration=trimmed_video_duration, size_mb=trimmed_video_size, file_path=file_location)
-                db.add(trimmed_video)
+                trimmed_video.write_videofile(file_location, codec="libx264")
+                video_ob = Video(
+                    id=unique_id, 
+                    title=video.title, 
+                    duration=int(trimmed_video.duration), 
+                    size_mb=os.path.getsize(file_location) / (1024 * 1024), 
+                    file_path=file_location, 
+                    trimmed=True
+                )
+                db.add(video_ob)
                 db.commit()
-                db.refresh(trimmed_video)
-
+                db.refresh(video_ob)
             else:
-                with open(video.file_path, "wb") as buffer:
-                    buffer.write(trimmed_video)
-                
-                video.duration = trimmed_video_duration
+                trimmed_video.write_videofile(video.file_path, codec="libx264")
+                video.duration = int(trimmed_video.duration)
                 video.size_mb = os.path.getsize(video.file_path) / (1024 * 1024)
+                video.trimmed = True
                 db.commit()
                 db.refresh(video)
 
             logger.info("Video trimmed successfully")
-            return {"message": "Video trimmed successfully", "video_id": video.id}
+            return {"message": "Video trimmed successfully", "video_id": unique_id}
         
         except Exception as e:
             err_str = f"Error during video trimming: {e}"
@@ -148,13 +153,51 @@ class VideoEndpoint:
 
         finally:
             video_file.close()
-            trimmed_video.close()
             if not save_as_new:
                 os.remove(video.file_path)
     
 
-    async def merge_videos(self, video_id: str, start_time: int, end_time: int, save_as_new: bool, db: Session = Depends(get_db)):
+    async def merge_videos(self, video_id1: str, video_id2: str, db: Session = Depends(get_db)):
         """
         API endpoint for trimming a video.
         """
-        pass
+        video1 = db.query(Video).filter(Video.id == video_id1).first()
+        video2 = db.query(Video).filter(Video.id == video_id2).first()
+
+        if not video1:
+            err_str = f"Video with id {video_id1} not found"
+            logger.error(err_str)
+            raise HTTPException(status_code=404, detail=err_str)
+        
+        if not video2:
+            err_str = f"Video with id {video_id2} not found"
+            logger.error(err_str)
+            raise HTTPException(status_code=404, detail=err_str)
+
+        try:
+            video_file1 = VideoFileClip(video1.file_path)
+            video_file2 = VideoFileClip(video2.file_path)
+            merged_video = concatenate_videoclips([video_file1, video_file2])
+            unique_id = str(uuid.uuid4())
+            file_extension = os.path.splitext(video1.file_path)[1]
+            file_location = f"store/{unique_id}{file_extension}"
+            merged_video.write_videofile(file_location, codec="libx264")
+            video_ob = Video(
+                id=unique_id,
+                title=f"{video1.title}_merged_{video2.title}",
+                duration=int(merged_video.duration),
+                size_mb=os.path.getsize(file_location) / (1024 * 1024),
+                file_path=file_location
+            )
+            db.add(video_ob)
+            db.commit()
+            db.refresh(video_ob)
+
+        except Exception as e:
+            err_str = f"Error during video trimming: {e}"
+            logger.error(err_str)
+            raise HTTPException(status_code=400, detail=err_str)
+
+        finally:
+            video_file1.close()
+            video_file2.close()

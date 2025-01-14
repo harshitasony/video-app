@@ -88,7 +88,7 @@ class VideoEndpoint:
             db.refresh(video_ob)
             
             logger.info("Video uploaded successfully")
-            return {"message": "Video uploaded successfully", "video_id": video.id}
+            return {"message": "Video uploaded successfully", "video_id": unique_id}
 
         except Exception as e:
             err_str = f"Error during video upload: {e}"
@@ -174,6 +174,10 @@ class VideoEndpoint:
             logger.error(err_str)
             raise HTTPException(status_code=404, detail=err_str)
 
+        video_file1 = None
+        video_file2 = None
+        merged_video = None
+
         try:
             video_file1 = VideoFileClip(video1.file_path)
             video_file2 = VideoFileClip(video2.file_path)
@@ -193,11 +197,19 @@ class VideoEndpoint:
             db.commit()
             db.refresh(video_ob)
 
+            logger.info("Videos merged successfully")
+            return {"message": "Videos merged successfully", "video_id": unique_id}
+
+
         except Exception as e:
             err_str = f"Error during video trimming: {e}"
             logger.error(err_str)
             raise HTTPException(status_code=400, detail=err_str)
 
         finally:
-            video_file1.close()
-            video_file2.close()
+            if video_file1:
+                video_file1.close()
+            if video_file2:
+                video_file2.close()
+            if merged_video:
+                merged_video.close()

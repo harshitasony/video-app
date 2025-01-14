@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE_MB: int
     MIN_VIDEO_DURATION_SEC: int
     MAX_VIDEO_DURATION_SEC: int
+    LINK_EXPIRY_MINUTES: int
 
     class Config:
         env_file = ".env" 

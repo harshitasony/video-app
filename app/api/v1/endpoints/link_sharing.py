@@ -28,7 +28,7 @@ class LinkSharingEndpoint:
         self.router.post(
             "/generate_link",
             status_code=status.HTTP_200_OK,
-            dependencies=[Depends( app/core/auth.py cate)],
+            dependencies=[Depends(authenticate)],
         )(self.generate_link)
         self.router.get(
             "/access_video/{link_id}",
